@@ -39,6 +39,7 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 		cfg,
 		nil,
 	)
+	openAIReviveCheckSvc := service.NewOpenAIReviveCheckService(nil, nil, tokenRefreshSvc, openAIOAuthSvc, cfg)
 	accountExpirySvc := service.NewAccountExpiryService(nil, time.Second)
 	subscriptionExpirySvc := service.NewSubscriptionExpiryService(nil, time.Second)
 	pricingSvc := service.NewPricingService(cfg, nil)
@@ -59,6 +60,7 @@ func TestProvideCleanup_WithMinimalDependencies_NoPanic(t *testing.T) {
 		opsSystemLogSinkSvc,
 		schedulerSnapshotSvc,
 		tokenRefreshSvc,
+		openAIReviveCheckSvc,
 		accountExpirySvc,
 		subscriptionExpirySvc,
 		&service.UsageCleanupService{},

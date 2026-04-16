@@ -65,6 +65,19 @@ func ProvideTokenRefreshService(
 	return svc
 }
 
+// ProvideOpenAIReviveCheckService creates and starts OpenAIReviveCheckService.
+func ProvideOpenAIReviveCheckService(
+	accountRepo AccountRepository,
+	accountTestService *AccountTestService,
+	tokenRefreshService *TokenRefreshService,
+	openaiOAuthService *OpenAIOAuthService,
+	cfg *config.Config,
+) *OpenAIReviveCheckService {
+	svc := NewOpenAIReviveCheckService(accountRepo, accountTestService, tokenRefreshService, openaiOAuthService, cfg)
+	svc.Start()
+	return svc
+}
+
 // ProvideClaudeTokenProvider creates ClaudeTokenProvider with OAuthRefreshAPI injection
 func ProvideClaudeTokenProvider(
 	accountRepo AccountRepository,

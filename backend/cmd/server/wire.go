@@ -80,6 +80,7 @@ func provideCleanup(
 	opsSystemLogSink *service.OpsSystemLogSink,
 	schedulerSnapshot *service.SchedulerSnapshotService,
 	tokenRefresh *service.TokenRefreshService,
+	openaiReviveCheck *service.OpenAIReviveCheckService,
 	accountExpiry *service.AccountExpiryService,
 	subscriptionExpiry *service.SubscriptionExpiryService,
 	usageCleanup *service.UsageCleanupService,
@@ -165,6 +166,12 @@ func provideCleanup(
 			}},
 			{"TokenRefreshService", func() error {
 				tokenRefresh.Stop()
+				return nil
+			}},
+			{"OpenAIReviveCheckService", func() error {
+				if openaiReviveCheck != nil {
+					openaiReviveCheck.Stop()
+				}
 				return nil
 			}},
 			{"AccountExpiryService", func() error {

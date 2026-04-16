@@ -134,4 +134,7 @@ docs/*
 frontend/coverage/
 aicodex
 output/
+.hermes/
+DEV_CONTEXT_*.md
+backend/mise.toml
 
