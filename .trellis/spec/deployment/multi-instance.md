@@ -211,11 +211,36 @@ func (c *geminiTokenCache) AcquireRefreshLock(ctx context.Context, cacheKey stri
 
 | 状态 | 位置 | 说明 |
 |---|---|---|
-| 自定义页面 | `{DATA_DIR}/pages/*.md`（`handler/page_handler.go:29`） | 管理端上传的是**文件不是 DB 记录**，各实例各存各的 |
+| 自定义页面 | `{pricing.data_dir}/pages/*.md`（`handler/page_handler.go:28`） | 管理端上传的是**文件不是 DB 记录**，各实例各存各的 |
 | 定价缓存 | `{pricing.data_dir}/model_pricing.json` + `.sha256`（`service/pricing_service.go:1047`，注意同名的 `repository/pricing_service.go` 不是这个） | 从上游同步的只读缓存，会自愈，无需干预 |
 | 应用二进制 | 本机文件系统 | 在线更新只更新当前实例，见 2.5 |
 
-自定义页面若需要一致，用共享卷或部署时同步 `{DATA_DIR}/pages/`。
+自定义页面若需要一致，用共享卷或部署时同步 `{pricing.data_dir}/pages/`。
+
+### `pricing.data_dir` 相对 CWD，不是相对 `DATA_DIR`
+
+```go
+// internal/config/config.go:2120
+viper.SetDefault("pricing.data_dir", "./data")
+```
+
+它是**上面两项的共同父目录**——`internal/server/router.go:127` 把
+`cfg.Pricing.DataDir` 传给了 `RegisterPageRoutes`，所以自定义页面也落在这里，
+而不是 `DATA_DIR` 下：
+
+```go
+// internal/handler/page_handler.go:28
+pagesDir := filepath.Join(dataDir, "pages")   // dataDir == cfg.Pricing.DataDir
+```
+
+默认值以 `./` 开头，解析基准是**进程 CWD**，与 `DATA_DIR` 无关
+（`setup.GetDataDir()` 那条链只影响 `config.yaml` / `.installed` / 日志）。
+后果：同一个二进制从不同目录启动，定价缓存与自定义页面会散落在不同地方；
+容器里 CWD 恰好是 `/app` 所以看不出问题，裸机 / 多实例部署必须显式设置：
+
+```bash
+PRICING_DATA_DIR=/abs/path/to/data     # 建议与 DATA_DIR 指向同一目录
+```
 
 ---
 
@@ -294,6 +319,7 @@ DATABASE_SSLMODE=require          # 跨网络必须，别用默认的 prefer
 REDIS_HOST=... REDIS_PORT=... REDIS_DB=0   # DB 编号必须一致
 REDIS_PASSWORD=...
 RUN_MODE=standard                 # 所有实例保持一致
+PRICING_DATA_DIR=/abs/path/data   # 默认 "./data" 相对 CWD，裸机部署必须写绝对路径
 ```
 
 - [ ] `TOTP_ENCRYPTION_KEY` 所有实例一致，且**不是**空值（启动日志里搜
@@ -303,7 +329,8 @@ RUN_MODE=standard                 # 所有实例保持一致
 - [ ] `RUN_MODE` 一致
 - [ ] 定时备份只在一个实例上启用
 - [ ] `pg_dump` 版本 ≥ 数据库服务端版本
-- [ ] 自定义页面目录 `{DATA_DIR}/pages/` 已同步或确认不需要
+- [ ] `PRICING_DATA_DIR` 已设为绝对路径（不设则随启动目录漂移）
+- [ ] 自定义页面目录 `{pricing.data_dir}/pages/` 已同步或确认不需要
 
 ---
 
@@ -318,6 +345,7 @@ RUN_MODE=standard                 # 所有实例保持一致
 | 每天产生多份重复备份 | 定时备份未做单实例限制（见第三节） |
 | 更新后发现只有一台升级了 | 在线更新替换的是本机二进制，需逐台执行 |
 | 同一份数据在不同实例上功能不一致（如计费接口 404） | `RUN_MODE` 混用了 `standard` 与 `simple` |
+| 启动后在仓库根 / 启动目录冒出一个 `data/`，或自定义页面「丢了」 | `pricing.data_dir` 保持默认 `./data`，相对 CWD 解析，换目录启动就换位置 |
 | 数据库连接看似正常但流量是明文 | `DATABASE_SSLMODE` 用了默认的 `prefer`，服务端未开 TLS 时静默降级 |
 
 ---
