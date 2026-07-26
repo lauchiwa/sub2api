@@ -1,197 +1,57 @@
-# Pinia Stores Documentation
+# Pinia Stores
 
-This directory contains all Pinia stores for the Sub2API frontend application.
+全部 8 个 store 一律使用 **setup 语法**（`defineStore('name', () => { ... })`），
+不用 options 语法。
 
-## Stores Overview
+> **store 的 state / actions 以源码为准。** 这里不再维护逐个 action 的清单
+> （此前维护的版本只覆盖了 2 个 store，且已与代码脱节）。
+>
+> 状态分层判定、缓存模式、localStorage 约定见
+> [`.trellis/spec/frontend/state-management.md`](../../../.trellis/spec/frontend/state-management.md)。
 
-### 1. Auth Store (`auth.ts`)
+## Store 一览
 
-Manages user authentication state, login/logout, and token persistence.
+| 文件 | 名称 | 职责 |
+|------|------|------|
+| `auth.ts` | `useAuthStore` | 登录 / 注册 / 登出、2FA、token 持久化与自动刷新、当前用户 |
+| `app.ts` | `useAppStore` | 全局 UI：侧栏折叠、全局 loading 计数、toast 队列 |
+| `adminSettings.ts` | `useAdminSettingsStore` | 管理端设置的读取与缓存 |
+| `subscriptions.ts` | `useSubscriptionStore` | 订阅套餐与当前订阅状态 |
+| `payment.ts` | `usePaymentStore` | 支付下单与状态流转 |
+| `announcements.ts` | `useAnnouncementStore` | 公告列表与已读状态 |
+| `onboarding.ts` | `useOnboardingStore` | 新手引导步骤进度 |
+| `adminCompliance.ts` | `useAdminComplianceStore` | 管理端合规 / 审计相关状态 |
 
-**State:**
-
-- `user: User | null` - Current authenticated user
-- `token: string | null` - JWT authentication token
-
-**Computed:**
-
-- `isAuthenticated: boolean` - Whether user is currently authenticated
-
-**Actions:**
-
-- `login(credentials)` - Authenticate user with username/password
-- `register(userData)` - Register new user account
-- `logout()` - Clear authentication and logout
-- `checkAuth()` - Restore session from localStorage
-- `refreshUser()` - Fetch latest user data from server
-
-### 2. App Store (`app.ts`)
-
-Manages global UI state including sidebar, loading indicators, and toast notifications.
-
-**State:**
-
-- `sidebarCollapsed: boolean` - Sidebar collapsed state
-- `loading: boolean` - Global loading state
-- `toasts: Toast[]` - Active toast notifications
-
-**Computed:**
-
-- `hasActiveToasts: boolean` - Whether any toasts are active
-
-**Actions:**
-
-- `toggleSidebar()` - Toggle sidebar state
-- `setSidebarCollapsed(collapsed)` - Set sidebar state explicitly
-- `setLoading(isLoading)` - Set loading state
-- `showToast(type, message, duration?)` - Show toast notification
-- `showSuccess(message, duration?)` - Show success toast
-- `showError(message, duration?)` - Show error toast
-- `showInfo(message, duration?)` - Show info toast
-- `showWarning(message, duration?)` - Show warning toast
-- `hideToast(id)` - Hide specific toast
-- `clearAllToasts()` - Clear all toasts
-- `withLoading(operation)` - Execute async operation with loading state
-- `withLoadingAndError(operation, errorMessage?)` - Execute with loading and error handling
-- `reset()` - Reset store to defaults
-
-## Usage Examples
-
-### Auth Store
+统一从 barrel 导入（`index.ts` 同时重导出了 `User`、`Toast` 等常用类型）：
 
 ```typescript
-import { useAuthStore } from '@/stores'
-
-// In component setup
-const authStore = useAuthStore()
-
-// Initialize on app startup
-authStore.checkAuth()
-
-// Login
-try {
-  await authStore.login({ username: 'user', password: 'pass' })
-  console.log('Logged in:', authStore.user)
-} catch (error) {
-  console.error('Login failed:', error)
-}
-
-// Check authentication
-if (authStore.isAuthenticated) {
-  console.log('User is logged in:', authStore.user?.username)
-}
-
-// Logout
-authStore.logout()
-```
-
-### App Store
-
-```typescript
-import { useAppStore } from '@/stores'
-
-// In component setup
-const appStore = useAppStore()
-
-// Sidebar control
-appStore.toggleSidebar()
-appStore.setSidebarCollapsed(true)
-
-// Loading state
-appStore.setLoading(true)
-// ... do work
-appStore.setLoading(false)
-
-// Or use helper
-await appStore.withLoading(async () => {
-  const data = await fetchData()
-  return data
-})
-
-// Toast notifications
-appStore.showSuccess('Operation completed!')
-appStore.showError('Something went wrong!', 5000)
-appStore.showInfo('FYI: This is informational')
-appStore.showWarning('Be careful!')
-
-// Custom toast
-const toastId = appStore.showToast('info', 'Custom message', undefined) // No auto-dismiss
-// Later...
-appStore.hideToast(toastId)
-```
-
-### Combined Usage in Vue Component
-
-```vue
-<script setup lang="ts">
 import { useAuthStore, useAppStore } from '@/stores'
-import { onMounted } from 'vue'
-
-const authStore = useAuthStore()
-const appStore = useAppStore()
-
-onMounted(() => {
-  // Check for existing session
-  authStore.checkAuth()
-})
-
-async function handleLogin(username: string, password: string) {
-  try {
-    await appStore.withLoading(async () => {
-      await authStore.login({ username, password })
-    })
-    appStore.showSuccess('Welcome back!')
-  } catch (error) {
-    appStore.showError('Login failed. Please check your credentials.')
-  }
-}
-
-async function handleLogout() {
-  authStore.logout()
-  appStore.showInfo('You have been logged out.')
-}
-</script>
-
-<template>
-  <div>
-    <button @click="appStore.toggleSidebar">Toggle Sidebar</button>
-
-    <div v-if="appStore.loading">Loading...</div>
-
-    <div v-if="authStore.isAuthenticated">
-      Welcome, {{ authStore.user?.username }}!
-      <button @click="handleLogout">Logout</button>
-    </div>
-    <div v-else>
-      <button @click="handleLogin('user', 'pass')">Login</button>
-    </div>
-  </div>
-</template>
 ```
 
-## Persistence
+## 使用约定
 
-- **Auth Store**: Token and user data are automatically persisted to `localStorage`
-  - Keys: `auth_token`, `auth_user`
-  - Restored on `checkAuth()` call
-- **App Store**: No persistence (UI state resets on page reload)
+- **持有 store 实例、通过 `store.x` 访问**，这是全仓的主流写法。
+  确实需要解构响应式字段时才用 `storeToRefs`（目前只有 `AnnouncementBell.vue` 这么做）。
+- **store 只依赖 `@/api` 的封装函数**，不直接写 axios / HTTP 细节，也不 import 组件。
+- 提示统一走 `appStore.showSuccess / showError / showWarning / showInfo`；
+  异步操作可用 `appStore.withLoading` / `withLoadingAndError` 包裹
+  （`loading` 由内部 `loadingCount` 计数驱动，支持并发调用）。
+- **不是所有共享状态都该进 store**：只在一个页面树内使用的状态留在组件或 composable 里。
 
-## TypeScript Support
+## 持久化
 
-All stores are fully typed with TypeScript. Import types from `@/types`:
+`auth.ts` 与 `api/client.ts` **共用同一批 `localStorage` key**，改动必须两边同步：
 
-```typescript
-import type { User, Toast, ToastType } from '@/types'
-```
+| key | 用途 |
+|-----|------|
+| `auth_token` | access token |
+| `refresh_token` | refresh token |
+| `auth_user` | 当前用户快照（JSON） |
+| `token_expires_at` | 过期**时间戳**（不是有效期秒数） |
+| `pending_auth_session` | 待完成的第三方登录会话（JSON） |
 
-## Testing
-
-Stores can be reset to initial state:
-
-```typescript
-// Auth store
-authStore.logout() // Clears all auth state
-
-// App store
-appStore.reset() // Resets to defaults
-```
+- `api/client.ts` 的 401 刷新流程会直接读写前 4 个 key；
+  登出 / 刷新失败时四个一起清除。
+- 读取持久化 JSON 必须 try/catch 并逐字段校验，脏数据直接清掉——
+  旧版本结构可能残留在用户浏览器里。
+- `app.ts` 不做持久化（UI 状态刷新即重置）。
