@@ -120,9 +120,19 @@ tests
 !deploy/tests/**
 CLAUDE.md
 .claude
+# Trellis 为 Cursor/Codex/Gemini 等平台生成的 skills 镜像，
+# 与上面的 .claude 同类：本地生成物，不入库
+.agents/
 scripts
 !backend/scripts/
 !backend/scripts/resolve-version.sh
+# 上面的 `scripts` 是无锚定通配，会匹配任意层级的 scripts/ 目录，
+# 把 .trellis/scripts/ 一并吞掉。而每个 hook / skill 都要调
+# `python3 ./.trellis/scripts/task.py`，克隆下来缺这 28 个脚本就开不了工。
+# .trellis/ 内部该忽略什么由 .trellis/.gitignore 自己管（运行时状态、
+# .current-task、.developer 等），这里只负责撤掉误伤。
+!.trellis/scripts/
+!.trellis/scripts/**
 .code-review-state
 #openspec/
 code-reviews/
