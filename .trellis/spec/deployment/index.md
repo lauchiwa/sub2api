@@ -19,8 +19,8 @@ Sub2API 是**单二进制 + PostgreSQL + Redis**：前端构建产物内嵌进 G
         ▼
   sub2api 单进程（Gin + 内嵌前端 dist）
         │
-        ├── PostgreSQL 18
-        └── Redis 8
+        ├── PostgreSQL（下限 15，官方编排用 18）
+        └── Redis（下限 7，官方编排用 8；必需依赖，非可选缓存）
 ```
 
 官方给出的编排见 `deploy/docker-compose.yml`（应用 + `postgres:18-alpine` +
@@ -49,6 +49,7 @@ Sub2API 是**单二进制 + PostgreSQL + Redis**：前端构建产物内嵌进 G
 |-------|------|
 | [Reverse Proxy](./reverse-proxy.md) | Nginx / Caddy 基线配置、可信代理与转发 IP、SSE/WS 超时 |
 | [Runtime Config](./runtime-config.md) | viper 配置加载顺序、环境变量命名、Docker 构建与镜像约定 |
+| [Multi-Instance](./multi-instance.md) | 多实例共享同一套 PG + Redis 的约束：必须一致的配置、leader lock 与 pub/sub 清单、会双跑的任务 |
 
 相关规范：后端服务器配置项见 [`../backend/index.md`](../backend/index.md)，
 前端构建产物落点见 [`../frontend/index.md`](../frontend/index.md)。
