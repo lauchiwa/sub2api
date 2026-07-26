@@ -60,7 +60,10 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
         with:
-          version: 9
+          # Version comes from frontend/package.json "packageManager".
+          # Do not add a `version:` input here — action-setup fails with
+          # "Multiple versions of pnpm specified" when both are present.
+          package_json_file: frontend/package.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
